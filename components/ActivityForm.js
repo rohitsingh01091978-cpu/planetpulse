@@ -21,11 +21,11 @@ function saveErrorText(res) {
   return reason;
 }
 
-export default function ActivityForm({ onLogged }) {
+export default function ActivityForm({ onLogged, initialToday = '' }) {
   const [type, setType] = useState('car');
   const [quantity, setQuantity] = useState('');
-  const [date, setDate] = useState('');
-  const [today, setToday] = useState('');
+  const [date, setDate] = useState(initialToday); // today in IST, already in the server HTML
+  const [today, setToday] = useState(initialToday);
   const [status, setStatus] = useState(null); // { kind: 'success' | 'error', text }
   const [fieldError, setFieldError] = useState(null); // { field, message } from the pre-checks
   const [confirmMessage, setConfirmMessage] = useState(null);
@@ -34,13 +34,6 @@ export default function ActivityForm({ onLogged }) {
   const dateRef = useRef(null);
   const confirmRef = useRef(null);
   const inFlight = useRef(false); // blocks a second submit before React re-renders
-
-  // Set after mount so server and client HTML match. Today is always today in IST.
-  useEffect(() => {
-    const t = todayIST();
-    setToday(t);
-    setDate(t);
-  }, []);
 
   // Keyboard users land on the confirm button when the "are you sure?" prompt appears.
   useEffect(() => {
@@ -98,6 +91,10 @@ export default function ActivityForm({ onLogged }) {
       // Sensible reset: clear the quantity, keep the activity and date for the next entry.
       // If the user already started typing the next quantity while this saved, keep theirs.
       setQuantity((current) => (current === sentQuantity ? '' : current));
+      // The date goes back to today (IST) after every save; it stays editable.
+      const t = todayIST();
+      setToday(t);
+      setDate(t);
       onLogged(a);
       quantityRef.current?.focus();
     } finally {
