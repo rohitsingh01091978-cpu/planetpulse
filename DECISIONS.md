@@ -17,3 +17,11 @@ The week runs Monday to Sunday in IST (UTC+05:30), calculated explicitly rather 
 - **No authentication:** as required, all data lives in shared tables with RLS disabled, and there is a single global weekly target (one row in `settings`).
 - **Backend calculation:** the CO2 value is computed in the API route and stored with each activity, so history stays correct even if factors change later.
 - **Quantities are rounded to 2 decimals** before calculating, so the stored quantity and the stored CO2 always agree.
+
+## Log an activity flow
+
+- **Activity cards are real radio inputs** inside a fieldset with the legend "Activity type". Each has an explicit accessible name such as "Car (km)", works with the keyboard (arrow keys move the selection) and stays visible to browser automation, so the cards are for people and agents alike.
+- **Two layers of validation.** The form pre-checks quantity and date and shows friendly, specific messages without calling the server. The API validates the same rules again and stays the source of truth, including the "unusually high, are you sure?" confirm step, which only the server decides.
+- **One request per action.** A lock stops double clicks or a double Enter from sending two saves, and a failed save keeps the entry in the form with a message saying what went wrong.
+- **The screen updates instantly, then reconciles.** After a save the dashboard, weekly progress and history are updated in the same render using the same maths as the server (`summarize` in `lib/summary.js`), and a background refetch replaces them with server data. Unit tests check both give identical results.
+- **Dates are plain calendar dates.** They are never converted through a time zone, "today" is computed in IST, and tests run the date code under five different system time zones.

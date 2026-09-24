@@ -53,7 +53,7 @@ Decision points (nudge, absurd input, IST week) are explained in [DECISIONS.md](
 
    Open http://localhost:3000.
 
-5. **Tests:** `npm test` checks the emission factors, units, CO2 calculation, IST week logic and nudge (no database needed).
+5. **Tests:** `npm test` checks the emission factors, units, CO2 calculation, form validation messages, instant-update maths, history ordering, date handling across time zones, IST week logic and nudge (no database needed).
 6. **Production build check:** `npm run build` then `npm start`.
 
 ## Deploy on Vercel

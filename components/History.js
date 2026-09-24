@@ -1,28 +1,49 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { History as HistoryIcon } from 'lucide-react';
 import EmptyState from '@/components/EmptyState';
 import TypeIcon from '@/components/TypeIcon';
 import { ACTIVITY_TYPES, TYPE_KEYS } from '@/lib/constants';
 import { apiFetch } from '@/lib/api';
+import { byNewest, matchesFilters } from '@/lib/optimistic';
 import { formatDate } from '@/lib/week';
 
 const NO_FILTER = { type: 'all', from: '', to: '' };
 
-export default function History({ refreshKey }) {
+export default function History({ refreshKey, newActivity }) {
   const [filters, setFilters] = useState(NO_FILTER);
   const [reloadKey, setReloadKey] = useState(0); // bumped by "Apply filters" to force a refetch
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const lastQuery = useRef('');
+  const [shownActivity, setShownActivity] = useState(null);
+
+  // Show a just-saved activity right away (if it matches the active filters), in the same
+  // order the API uses. Done while rendering (not in an effect) so the history changes in the
+  // same paint as the dashboard total. The background refetch below then replaces the list
+  // with server data.
+  if (newActivity && newActivity !== shownActivity) {
+    setShownActivity(newActivity);
+    if (result && matchesFilters(newActivity, filters) && !result.activities.some((a) => a.id === newActivity.id)) {
+      setResult({
+        ...result,
+        activities: [newActivity, ...result.activities].sort(byNewest).slice(0, result.limit),
+        count: result.count + 1,
+      });
+    }
+  }
 
   // Filters apply automatically: any change to type/dates (or new data) refetches the list.
   // `cancelled` drops responses from superseded requests so the table always matches the filters.
   useEffect(() => {
     let cancelled = false;
+    const query = JSON.stringify([filters, reloadKey]);
+    const background = query === lastQuery.current; // only new data: refresh quietly, no dimming
+    lastQuery.current = query;
     async function load() {
-      setLoading(true);
+      if (!background) setLoading(true);
       const params = new URLSearchParams();
       if (filters.type !== 'all') params.set('type', filters.type);
       if (filters.from) params.set('from', filters.from);
@@ -31,6 +52,7 @@ export default function History({ refreshKey }) {
       if (cancelled) return;
       setLoading(false);
       if (!res.ok) {
+        if (background) return; // keep the last good list if a quiet refresh fails
         setError(res.data?.error || 'Could not load history.');
         setResult(null);
       } else {

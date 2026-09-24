@@ -8,12 +8,14 @@ import History from '@/components/History';
 import PlanetMark from '@/components/PlanetMark';
 import WeeklyTarget from '@/components/WeeklyTarget';
 import { apiFetch } from '@/lib/api';
+import { applyActivity } from '@/lib/optimistic';
 import { targetStatus } from '@/lib/target';
 
 export default function Home() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // bumps whenever activities change
+  const [newActivity, setNewActivity] = useState(null); // the activity that was just saved
   const latestRequest = useRef(0);
 
   const loadSummary = useCallback(async () => {
@@ -32,7 +34,13 @@ export default function Home() {
     loadSummary();
   }, [loadSummary, refreshKey]);
 
-  const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
+  // After "Log activity": show the new activity in the dashboard and history right away,
+  // then refetch from the server to reconcile (this also fills in the weekly nudge tip).
+  const handleLogged = useCallback((activity) => {
+    setSummary((prev) => applyActivity(prev, activity));
+    setNewActivity(activity);
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   // After "Save target": apply the new target to the summary right away (same math the
   // server uses), then reconcile with the server. Avoids showing the old target state.
@@ -68,14 +76,12 @@ export default function Home() {
       )}
 
       <div className="grid-top">
-        <div className="stack">
-          <ActivityForm onLogged={refresh} />
-          <FactorsCard />
-        </div>
+        <ActivityForm onLogged={handleLogged} />
         <Dashboard summary={summary} />
       </div>
+      <FactorsCard />
       <WeeklyTarget summary={summary} onSaved={handleTargetSaved} />
-      <History refreshKey={refreshKey} />
+      <History refreshKey={refreshKey} newActivity={newActivity} />
 
       <footer className="site-footer">PlanetPulse &middot; week runs Monday to Sunday (IST)</footer>
     </main>

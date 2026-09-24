@@ -95,16 +95,16 @@ body {
   }
 }
 
-/* left column: log form + emission factors; the last card grows so both columns end level */
-.stack {
+/* log card fills its grid row; the CO2 preview absorbs any spare height so both columns end level */
+.log-card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-width: 0;
 }
 
-.stack .factors-card {
+.log-card form {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .card {
@@ -234,46 +234,193 @@ input[type='number']::-webkit-inner-spin-button {
   color: var(--forest);
 }
 
-.preview {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 12px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  min-height: 52px;
-  align-content: center;
+/* ---------- activity cards (real radio inputs in a fieldset) ---------- */
+.type-fieldset {
+  border: 0;
+  margin: 0 0 16px;
+  padding: 0;
+  min-width: 0;
+}
+
+.type-fieldset legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.activity-option {
+  position: relative;
+  display: block;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+/* The real radio covers the whole card: clickable, focusable and arrow-key navigable.
+   It is drawn as nothing (appearance: none, transparent) instead of opacity: 0, so browsers
+   and automation tools still treat it as a visible, interactive control. */
+.activity-option input {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: 12px;
-  background: #eaf5ec;
-  border: 1px solid #c8e2cd;
-}
-
-.preview.is-empty {
   background: transparent;
-  border: 1px dashed #cfc9b8;
-  color: var(--muted);
-  font-size: 0.9rem;
+  cursor: pointer;
 }
 
-.preview-label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.activity-option input:focus {
+  box-shadow: none;
+}
+
+.activity-face {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  height: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.activity-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.activity-name {
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.activity-unit {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.activity-check {
+  color: var(--forest);
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.activity-option:hover .activity-face {
+  border-color: #b9b29c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(29, 43, 35, 0.08);
+}
+
+.activity-option input:checked + .activity-face {
+  border-color: var(--forest);
+  background: #eef7f0;
+  box-shadow: 0 0 0 1px var(--forest);
+}
+
+.activity-option input:checked + .activity-face .type-chip {
+  background: var(--tc);
+  color: #fff;
+}
+
+.activity-option input:checked + .activity-face .activity-check {
+  opacity: 1;
+  transform: none;
+}
+
+.activity-option input:checked + .activity-face .activity-unit {
   color: var(--forest);
 }
 
-.preview-value {
+.activity-option input:focus-visible + .activity-face {
+  outline: 3px solid rgba(46, 155, 87, 0.5);
+  outline-offset: 2px;
+}
+
+/* ---------- live CO2 preview: the hero of the form ---------- */
+.co2-hero {
+  flex: 1 1 auto;
+  min-height: 124px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: #e9f5ec;
+  border: 1px solid #c5e0cb;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.co2-hero.is-empty {
+  background: transparent;
+  border: 1px dashed #cfc9b8;
+}
+
+.co2-hero-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--forest);
+}
+
+.co2-equation {
+  margin: 0;
+  line-height: 1.25;
+  color: var(--muted);
+  animation: rise 0.2s ease both;
+}
+
+.eq-result {
+  display: inline-block;
   font-family: var(--serif);
-  font-size: 1.55rem;
+  font-size: clamp(1.7rem, 4.2vw, 2.15rem);
   font-weight: 700;
   color: var(--forest);
   font-variant-numeric: tabular-nums;
 }
 
-.preview-calc {
-  font-size: 0.85rem;
+.co2-empty {
+  margin: 0;
   color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.co2-note {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.co2-factor {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.co2-factor strong {
+  color: var(--forest);
 }
 
 .btn {
@@ -347,6 +494,17 @@ input[type='number']::-webkit-inner-spin-button {
 
 .alert p:last-child {
   margin-bottom: 0;
+}
+
+.alert-icon {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.alert-icon svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 .alert-ok {
@@ -428,8 +586,20 @@ input[type='number']::-webkit-inner-spin-button {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+
+@media (min-width: 561px) {
+  .factor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 820px) {
+  .factor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .factor-tile {
@@ -465,11 +635,7 @@ input[type='number']::-webkit-inner-spin-button {
   color: var(--forest);
 }
 
-@media (max-width: 560px) {
-  .factor-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 
 /* ---------- empty states ---------- */
 .empty-state {
