@@ -58,7 +58,9 @@ Decision points (nudge, absurd input, IST week) are explained in [DECISIONS.md](
 
 ## Deploy on Vercel
 
-Import the repo in Vercel, add the same two environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in Project Settings, and deploy. No other configuration is needed.
+Import the repo in Vercel, add the same two environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) in Project Settings, and deploy.
+
+`vercel.json` pins the serverless functions to `bom1` (Mumbai) because the Supabase project is in `ap-south-1` (Mumbai). Keeping the function next to the database avoids a cross-continent round trip on every request. If your Supabase project is in another region, change `regions` to the closest Vercel region.
 
 ## API
 

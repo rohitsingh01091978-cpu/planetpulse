@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClipboardPen } from 'lucide-react';
 import TypeIcon from '@/components/TypeIcon';
-import { ACTIVITY_TYPES, TYPE_KEYS } from '@/lib/constants';
+import { ACTIVITY_TYPES, TYPE_KEYS, perUnit } from '@/lib/constants';
 import { calculateCo2, round2 } from '@/lib/co2';
 import { sendJson } from '@/lib/api';
 import { todayIST } from '@/lib/week';
@@ -26,7 +26,7 @@ export default function ActivityForm({ onLogged }) {
   }, []);
 
   const { unit, factor } = ACTIVITY_TYPES[type];
-  const perUnit = unit === 'meals' ? 'meal' : unit;
+  const per = perUnit(unit);
 
   // Live preview uses the same calculateCo2 as the backend.
   const qty = round2(quantity.trim() === '' ? NaN : Number(quantity));
@@ -43,25 +43,28 @@ export default function ActivityForm({ onLogged }) {
   async function save(confirm) {
     setSaving(true);
     setStatus(null);
-    const res = await sendJson('/api/activities', 'POST', { type, quantity, date, confirm });
-    setSaving(false);
+    try {
+      const res = await sendJson('/api/activities', 'POST', { type, quantity, date, confirm });
 
-    if (res.status === 409 && res.data?.needs_confirmation) {
-      setConfirmMessage(res.data.message);
-      return;
+      if (res.status === 409 && res.data?.needs_confirmation) {
+        setConfirmMessage(res.data.message);
+        return;
+      }
+      setConfirmMessage(null);
+      if (!res.ok) {
+        setStatus({ kind: 'error', text: res.data?.error || 'Could not save the activity.' });
+        return;
+      }
+      const a = res.data.activity;
+      setStatus({
+        kind: 'success',
+        text: `Logged ${a.quantity} ${a.unit} of ${a.label.toLowerCase()} on ${a.activity_date}: ${a.co2_kg.toFixed(2)} kg CO2.`,
+      });
+      setQuantity('');
+      onLogged();
+    } finally {
+      setSaving(false);
     }
-    setConfirmMessage(null);
-    if (!res.ok) {
-      setStatus({ kind: 'error', text: res.data?.error || 'Could not save the activity.' });
-      return;
-    }
-    const a = res.data.activity;
-    setStatus({
-      kind: 'success',
-      text: `Logged ${a.quantity} ${a.unit} of ${a.label.toLowerCase()} on ${a.activity_date}: ${a.co2_kg.toFixed(2)} kg CO2.`,
-    });
-    setQuantity('');
-    onLogged();
   }
 
   function handleSubmit(e) {
@@ -96,7 +99,7 @@ export default function ActivityForm({ onLogged }) {
             </select>
           </div>
           <p className="factor-note" data-testid="emission-factor">
-            Emission factor: <strong>{factor.toFixed(2)} kg CO2</strong> per {perUnit}
+            Emission factor: <strong>{factor.toFixed(2)} kg CO2</strong> per {per}
           </p>
         </div>
 
@@ -140,7 +143,7 @@ export default function ActivityForm({ onLogged }) {
               <span className="preview-label">Estimated CO2</span>
               <span className="preview-value">{preview.toFixed(2)} kg</span>
               <span className="preview-calc">
-                {qty} {unit} &times; {factor.toFixed(2)} kg/{perUnit}
+                {qty} {unit} &times; {factor.toFixed(2)} kg/{per}
               </span>
             </>
           )}

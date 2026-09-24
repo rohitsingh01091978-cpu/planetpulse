@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CalendarDays, Lightbulb, Target, TriangleAlert } from 'lucide-react';
-import { sendJson } from '@/lib/api';
+import { apiFetch, sendJson } from '@/lib/api';
 import { formatDate } from '@/lib/week';
 
 // onSaved(newTarget) lets the page update the summary instantly, before the server refetch lands.
@@ -19,18 +19,27 @@ export default function WeeklyTarget({ summary, onSaved }) {
     if (savedTarget != null) setValue(String(savedTarget));
   }, [savedTarget]);
 
+  // Each API route is its own serverless function on Vercel. Touch this one on page load so
+  // the first "Save target" does not pay for a cold start.
+  useEffect(() => {
+    apiFetch('/api/target');
+  }, []);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSaving(true);
     setStatus(null);
-    const res = await sendJson('/api/target', 'PUT', { weekly_target_kg: value });
-    setSaving(false);
-    if (!res.ok) {
-      setStatus({ kind: 'error', text: res.data?.error || 'Could not save the target.' });
-      return;
+    try {
+      const res = await sendJson('/api/target', 'PUT', { weekly_target_kg: value });
+      if (!res.ok) {
+        setStatus({ kind: 'error', text: res.data?.error || 'Could not save the target.' });
+        return;
+      }
+      setStatus({ kind: 'success', text: `Weekly target saved: ${res.data.weekly_target_kg.toFixed(2)} kg CO2.` });
+      onSaved(res.data.weekly_target_kg);
+    } finally {
+      setSaving(false); // always return the button to "Save target"
     }
-    setStatus({ kind: 'success', text: `Weekly target saved: ${res.data.weekly_target_kg.toFixed(2)} kg CO2.` });
-    onSaved(res.data.weekly_target_kg);
   }
 
   const hasTarget = week && week.target_kg != null;

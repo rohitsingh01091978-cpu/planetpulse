@@ -1,6 +1,7 @@
 'use client';
 
 import { LayoutDashboard } from 'lucide-react';
+import { Illustration } from '@/components/EmptyState';
 import TypeIcon from '@/components/TypeIcon';
 
 export default function Dashboard({ summary }) {
@@ -13,16 +14,19 @@ export default function Dashboard({ summary }) {
         <p className="muted">Loading...</p>
       ) : (
         <>
-          <div className="hero" data-testid="total-footprint">
-            <div className="hero-figure">
-              <span className="big-value">{summary.total_kg.toFixed(2)}</span>
-              <span className="big-unit">kg CO2 total footprint</span>
+          <div className={`hero ${summary.entry_count === 0 ? 'is-empty' : ''}`} data-testid="total-footprint">
+            <div>
+              <div className="hero-figure">
+                <span className="big-value">{summary.total_kg.toFixed(2)}</span>
+                <span className="big-unit">kg CO2 total footprint</span>
+              </div>
+              <p className="hero-sub">
+                {summary.entry_count === 0
+                  ? 'Nothing logged yet. Log your first activity to get started.'
+                  : `Across ${summary.entry_count} logged ${summary.entry_count === 1 ? 'activity' : 'activities'}.`}
+              </p>
             </div>
-            <p className="hero-sub">
-              {summary.entry_count === 0
-                ? 'Nothing logged yet. Log your first activity to get started.'
-                : `Across ${summary.entry_count} logged ${summary.entry_count === 1 ? 'activity' : 'activities'}.`}
-            </p>
+            {summary.entry_count === 0 && <Illustration variant="leaf" size={72} />}
           </div>
 
           <div className="table-wrap">

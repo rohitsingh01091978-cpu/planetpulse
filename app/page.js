@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ActivityForm from '@/components/ActivityForm';
 import Dashboard from '@/components/Dashboard';
+import FactorsCard from '@/components/FactorsCard';
 import History from '@/components/History';
 import PlanetMark from '@/components/PlanetMark';
 import WeeklyTarget from '@/components/WeeklyTarget';
@@ -51,9 +52,11 @@ export default function Home() {
   return (
     <main className="container">
       <header className="site-header">
-        <PlanetMark />
+        <PlanetMark size={64} />
         <div>
-          <h1>PlanetPulse</h1>
+          <h1>
+            Planet<span>Pulse</span>
+          </h1>
           <p className="tagline">Track your carbon footprint, one activity at a time. No sign-up needed.</p>
         </div>
       </header>
@@ -65,7 +68,10 @@ export default function Home() {
       )}
 
       <div className="grid-top">
-        <ActivityForm onLogged={refresh} />
+        <div className="stack">
+          <ActivityForm onLogged={refresh} />
+          <FactorsCard />
+        </div>
         <Dashboard summary={summary} />
       </div>
       <WeeklyTarget summary={summary} onSaved={handleTargetSaved} />

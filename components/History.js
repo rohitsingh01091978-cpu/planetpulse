@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { History as HistoryIcon } from 'lucide-react';
+import EmptyState from '@/components/EmptyState';
 import TypeIcon from '@/components/TypeIcon';
 import { ACTIVITY_TYPES, TYPE_KEYS } from '@/lib/constants';
 import { apiFetch } from '@/lib/api';
@@ -10,20 +11,22 @@ import { formatDate } from '@/lib/week';
 const NO_FILTER = { type: 'all', from: '', to: '' };
 
 export default function History({ refreshKey }) {
-  const [draft, setDraft] = useState(NO_FILTER); // what the inputs show
-  const [applied, setApplied] = useState(NO_FILTER); // what the list uses
+  const [filters, setFilters] = useState(NO_FILTER);
+  const [reloadKey, setReloadKey] = useState(0); // bumped by "Apply filters" to force a refetch
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Filters apply automatically: any change to type/dates (or new data) refetches the list.
+  // `cancelled` drops responses from superseded requests so the table always matches the filters.
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       const params = new URLSearchParams();
-      if (applied.type !== 'all') params.set('type', applied.type);
-      if (applied.from) params.set('from', applied.from);
-      if (applied.to) params.set('to', applied.to);
+      if (filters.type !== 'all') params.set('type', filters.type);
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
       const res = await apiFetch(`/api/activities?${params}`);
       if (cancelled) return;
       setLoading(false);
@@ -32,25 +35,24 @@ export default function History({ refreshKey }) {
         setResult(null);
       } else {
         setError(null);
-        setResult(res.data);
+        setResult({ ...res.data, filtered: filters.type !== 'all' || !!filters.from || !!filters.to });
       }
     }
     load();
     return () => {
       cancelled = true;
     };
-  }, [applied, refreshKey]);
+  }, [filters, refreshKey, reloadKey]);
 
-  const update = (field) => (e) => setDraft((d) => ({ ...d, [field]: e.target.value }));
+  const update = (field) => (e) => setFilters((f) => ({ ...f, [field]: e.target.value }));
 
   function handleSubmit(e) {
     e.preventDefault();
-    setApplied(draft);
+    setReloadKey((k) => k + 1);
   }
 
   function handleClear() {
-    setDraft(NO_FILTER);
-    setApplied(NO_FILTER);
+    setFilters(NO_FILTER);
   }
 
   const activities = result?.activities ?? [];
@@ -64,7 +66,7 @@ export default function History({ refreshKey }) {
       <form onSubmit={handleSubmit} noValidate className="filters">
         <div className="field">
           <label htmlFor="filter-type">Filter by type</label>
-          <select id="filter-type" name="filter_type" value={draft.type} onChange={update('type')}>
+          <select id="filter-type" name="filter_type" value={filters.type} onChange={update('type')}>
             <option value="all">All types</option>
             {TYPE_KEYS.map((key) => (
               <option key={key} value={key}>
@@ -75,11 +77,11 @@ export default function History({ refreshKey }) {
         </div>
         <div className="field">
           <label htmlFor="filter-from">From date</label>
-          <input id="filter-from" name="filter_from" type="date" value={draft.from} onChange={update('from')} />
+          <input id="filter-from" name="filter_from" type="date" value={filters.from} onChange={update('from')} />
         </div>
         <div className="field">
           <label htmlFor="filter-to">To date</label>
-          <input id="filter-to" name="filter_to" type="date" value={draft.to} onChange={update('to')} />
+          <input id="filter-to" name="filter_to" type="date" value={filters.to} onChange={update('to')} />
         </div>
         <div className="row filter-actions">
           <button type="submit" className="btn">
@@ -100,7 +102,7 @@ export default function History({ refreshKey }) {
       {!error && loading && !result && <p className="muted">Loading...</p>}
 
       {!error && result && (
-        <>
+        <div className={loading ? 'is-loading' : undefined} aria-busy={loading}>
           <p className="muted" data-testid="history-count">
             {result.count === 0
               ? 'No activities match.'
@@ -108,6 +110,18 @@ export default function History({ refreshKey }) {
                 ? `Showing the latest ${activities.length} of ${result.count} activities.`
                 : `${result.count} ${result.count === 1 ? 'activity' : 'activities'}.`}
           </p>
+
+          {activities.length === 0 &&
+            (result.filtered ? (
+              <EmptyState variant="earth" title="No activities match these filters">
+                Try a different type or date range, or clear the filters.
+              </EmptyState>
+            ) : (
+              <EmptyState variant="leaf" title="No activities logged yet">
+                Add your first one using the form and it will show up here.
+              </EmptyState>
+            ))}
+
           {activities.length > 0 && (
             <div className="table-wrap">
               <table data-testid="history-table">
@@ -140,7 +154,7 @@ export default function History({ refreshKey }) {
               </table>
             </div>
           )}
-        </>
+        </div>
       )}
     </section>
   );
