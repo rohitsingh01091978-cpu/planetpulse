@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { History as HistoryIcon } from 'lucide-react';
+import TypeIcon from '@/components/TypeIcon';
 import { ACTIVITY_TYPES, TYPE_KEYS } from '@/lib/constants';
 import { apiFetch } from '@/lib/api';
 import { formatDate } from '@/lib/week';
@@ -55,7 +57,9 @@ export default function History({ refreshKey }) {
 
   return (
     <section className="card" aria-labelledby="history-heading">
-      <h2 id="history-heading">History</h2>
+      <h2 id="history-heading">
+        <HistoryIcon size={20} aria-hidden="true" /> History
+      </h2>
 
       <form onSubmit={handleSubmit} noValidate className="filters">
         <div className="field">
@@ -120,7 +124,12 @@ export default function History({ refreshKey }) {
                   {activities.map((a) => (
                     <tr key={a.id}>
                       <td>{formatDate(a.activity_date)}</td>
-                      <td>{a.label}</td>
+                      <td>
+                        <span className="type-cell">
+                          <TypeIcon type={a.type} />
+                          {a.label}
+                        </span>
+                      </td>
                       <td className="num">
                         {a.quantity} {a.unit}
                       </td>

@@ -8,7 +8,7 @@ A simple carbon footprint tracker. Log everyday activities, see your CO2 footpri
 
 **Track:** Sustainability / Climate Tech
 
-**Tech:** Next.js (App Router, JavaScript), Supabase (Postgres), deployable on Vercel
+**Tech:** Next.js (App Router, JavaScript), Supabase (Postgres), lucide-react icons, deployable on Vercel
 
 **No test credentials needed.** There is no login or sign-up; every feature is open to anyone.
 
@@ -53,7 +53,8 @@ Decision points (nudge, absurd input, IST week) are explained in [DECISIONS.md](
 
    Open http://localhost:3000.
 
-5. **Production build check:** `npm run build` then `npm start`.
+5. **Tests:** `npm test` checks the emission factors, units, CO2 calculation, IST week logic and nudge (no database needed).
+6. **Production build check:** `npm run build` then `npm start`.
 
 ## Deploy on Vercel
 
@@ -73,7 +74,8 @@ Import the repo in Vercel, add the same two environment variables (`NEXT_PUBLIC_
 ```
 app/            pages, layout, styles and API routes (app/api/*)
 components/     ActivityForm, Dashboard, WeeklyTarget, History
-lib/            emission factors, CO2 math, IST week logic, nudge, Supabase client
+lib/            emission factors + units (constants.js), CO2 math, IST week logic, nudge, Supabase client
+scripts/        test.js (run with npm test)
 supabase/       schema.sql (RLS disabled)
 ```
 

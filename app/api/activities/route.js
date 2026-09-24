@@ -57,7 +57,12 @@ export const POST = handle(async (request) => {
   const info = ACTIVITY_TYPES[type];
 
   // DP2: reject zero / negative / non-numeric quantities.
-  if (rawQty === '' || rawQty == null) return badRequest('Quantity is required.');
+  if (rawQty == null || (typeof rawQty === 'string' && rawQty.trim() === '')) {
+    return badRequest('Quantity is required.');
+  }
+  if (typeof rawQty !== 'number' && typeof rawQty !== 'string') {
+    return badRequest('Quantity must be a number.');
+  }
   const parsed = Number(rawQty);
   if (!Number.isFinite(parsed)) return badRequest('Quantity must be a number.');
   if (parsed < 0) return badRequest('Quantity cannot be negative.');

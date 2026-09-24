@@ -1,19 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ActivityForm from '@/components/ActivityForm';
 import Dashboard from '@/components/Dashboard';
-import WeeklyTarget from '@/components/WeeklyTarget';
 import History from '@/components/History';
+import PlanetMark from '@/components/PlanetMark';
+import WeeklyTarget from '@/components/WeeklyTarget';
 import { apiFetch } from '@/lib/api';
+import { targetStatus } from '@/lib/target';
 
 export default function Home() {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // bumps whenever data changes
+  const [refreshKey, setRefreshKey] = useState(0); // bumps whenever activities change
+  const latestRequest = useRef(0);
 
   const loadSummary = useCallback(async () => {
+    const id = ++latestRequest.current;
     const res = await apiFetch('/api/summary');
+    if (id !== latestRequest.current) return; // a newer request superseded this one
     if (!res.ok) {
       setError(res.data?.error || 'Could not load your data.');
       return;
@@ -28,11 +33,29 @@ export default function Home() {
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), []);
 
+  // After "Save target": apply the new target to the summary right away (same math the
+  // server uses), then reconcile with the server. Avoids showing the old target state.
+  const handleTargetSaved = useCallback(
+    (target) => {
+      setSummary((prev) => {
+        if (!prev) return prev;
+        const w = prev.week;
+        const status = targetStatus(w.total_kg, target, w.day_number);
+        return { ...prev, week: { ...w, ...status, nudge: status.exceeded ? w.nudge : null } };
+      });
+      loadSummary();
+    },
+    [loadSummary]
+  );
+
   return (
     <main className="container">
       <header className="site-header">
-        <h1>PlanetPulse</h1>
-        <p className="tagline">Track your carbon footprint, one activity at a time. No sign-up needed.</p>
+        <PlanetMark />
+        <div>
+          <h1>PlanetPulse</h1>
+          <p className="tagline">Track your carbon footprint, one activity at a time. No sign-up needed.</p>
+        </div>
       </header>
 
       {error && (
@@ -41,9 +64,11 @@ export default function Home() {
         </p>
       )}
 
-      <ActivityForm onLogged={refresh} />
-      <Dashboard summary={summary} />
-      <WeeklyTarget summary={summary} onSaved={refresh} />
+      <div className="grid-top">
+        <ActivityForm onLogged={refresh} />
+        <Dashboard summary={summary} />
+      </div>
+      <WeeklyTarget summary={summary} onSaved={handleTargetSaved} />
       <History refreshKey={refreshKey} />
 
       <footer className="site-footer">PlanetPulse &middot; week runs Monday to Sunday (IST)</footer>
