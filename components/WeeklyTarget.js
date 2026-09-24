@@ -94,8 +94,8 @@ export default function WeeklyTarget({ summary, onSaved }) {
           <p className="week-meta">
             <CalendarDays size={16} aria-hidden="true" />
             <span>
-              Today is <strong>{week.day_name}</strong> (day {week.day_number} of 7). Week: Mon{' '}
-              {formatDate(week.start)} to Sun {formatDate(week.end)} (IST).
+              <strong>This week:</strong> Mon {formatDate(week.start)} to Sun {formatDate(week.end)} (IST) &middot;
+              Today is <strong>{week.day_name}</strong> (day {week.day_number} of 7)
             </span>
           </p>
 

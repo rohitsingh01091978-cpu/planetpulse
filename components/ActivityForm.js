@@ -197,8 +197,11 @@ export default function ActivityForm({ onLogged }) {
             value={date}
             onChange={edit(setDate)}
             aria-invalid={invalid('date')}
-            aria-describedby={describedBy('date')}
+            aria-describedby={fieldError?.field === 'date' ? 'date-hint log-feedback' : 'date-hint'}
           />
+          <p id="date-hint" className="field-hint">
+            Past dates count toward your total and history. Weekly progress always shows this week (Mon–Sun, IST).
+          </p>
         </div>
 
         <div

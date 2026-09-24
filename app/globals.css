@@ -1414,3 +1414,11 @@ tfoot td {
     background-color: transparent;
   }
 }
+
+/* small muted helper text under a form field */
+.field-hint {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
