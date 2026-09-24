@@ -18,6 +18,13 @@ The week runs Monday to Sunday in IST (UTC+05:30), calculated explicitly rather 
 - **Backend calculation:** the CO2 value is computed in the API route and stored with each activity, so history stays correct even if factors change later.
 - **Quantities are rounded to 2 decimals** before calculating, so the stored quantity and the stored CO2 always agree.
 
+## Dashboard groups and weekly target states
+
+- **Three groups on top of the table.** Transport (car, bus, flight), Energy (electricity) and Food (veg, non-veg) are rolled up from the same per-type data. The sums are done in whole cents and the shares with the largest-remainder method, so the groups add up exactly to the total kg and to exactly 100.0%.
+- **Three calm states for the weekly target.** Below 80% is "on track" (green), 80% up to and including 100% is "getting close" (soft amber), and only above 100% is "exceeded". Exceeded uses a warm orange warning, not alarm red, because going over a target is feedback, not an error.
+- **The nudge stays specific and encouraging.** It still names this week's biggest source and exactly how many kg a swap would have saved, and is now framed as "it happens to everyone, and small swaps add up". It appears only while the week is over target and never blocks logging.
+- **The nudge updates instantly.** The browser loads this week's activities through the existing history endpoint and builds the same tip the server does (tests check they are identical), so the tip appears, changes and disappears in the same render as the progress bar.
+
 ## Log an activity flow
 
 - **Activity cards are real radio inputs** inside a fieldset with the legend "Activity type". Each has an explicit accessible name such as "Car (km)", works with the keyboard (arrow keys move the selection) and stays visible to browser automation, so the cards are for people and agents alike.

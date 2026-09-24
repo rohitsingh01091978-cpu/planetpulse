@@ -1,18 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { CalendarDays, Lightbulb, Target, TriangleAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CalendarDays, CircleCheck, Gauge, Lightbulb, Target, TriangleAlert } from 'lucide-react';
 import { apiFetch, sendJson } from '@/lib/api';
+import { targetState } from '@/lib/target';
+import { validateTarget } from '@/lib/validate';
 import { formatDate } from '@/lib/week';
 
 // onSaved(newTarget) lets the page update the summary instantly, before the server refetch lands.
 export default function WeeklyTarget({ summary, onSaved }) {
   const [value, setValue] = useState('');
   const [status, setStatus] = useState(null);
+  const [fieldError, setFieldError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [barShown, setBarShown] = useState(false); // lets the bar grow from 0 when it first appears
+  const inputRef = useRef(null);
+  const inFlight = useRef(false);
 
   const week = summary?.week;
   const savedTarget = week?.target_kg ?? null;
+  const hasTarget = !!week && week.target_kg != null;
 
   // Pre-fill the input with the saved target once it loads.
   useEffect(() => {
@@ -25,10 +32,29 @@ export default function WeeklyTarget({ summary, onSaved }) {
     apiFetch('/api/target');
   }, []);
 
+  useEffect(() => {
+    if (!hasTarget) {
+      setBarShown(false);
+      return undefined;
+    }
+    const t = setTimeout(() => setBarShown(true), 60);
+    return () => clearTimeout(t);
+  }, [hasTarget]);
+
   async function handleSubmit(e) {
     e.preventDefault();
-    setSaving(true);
+    if (inFlight.current) return;
     setStatus(null);
+    // A number input reports non-numeric text as an empty value; ask the browser.
+    const problem = validateTarget(value, { badInput: inputRef.current?.validity.badInput });
+    if (problem) {
+      setFieldError(problem);
+      inputRef.current?.focus();
+      return;
+    }
+    setFieldError(null);
+    inFlight.current = true;
+    setSaving(true);
     try {
       const res = await sendJson('/api/target', 'PUT', { weekly_target_kg: value });
       if (!res.ok) {
@@ -38,14 +64,16 @@ export default function WeeklyTarget({ summary, onSaved }) {
       setStatus({ kind: 'success', text: `Weekly target saved: ${res.data.weekly_target_kg.toFixed(2)} kg CO2.` });
       onSaved(res.data.weekly_target_kg);
     } finally {
+      inFlight.current = false;
       setSaving(false); // always return the button to "Save target"
     }
   }
 
-  const hasTarget = week && week.target_kg != null;
   const exceeded = hasTarget && week.exceeded;
+  const state = week ? targetState(hasTarget ? week.percent : null, exceeded) : 'none';
   const barPercent = hasTarget ? Math.min(week.percent, 100) : 0;
-  const barState = !hasTarget ? '' : exceeded ? 'over' : week.percent >= 80 ? 'warn' : 'ok';
+  const barClass = { under: 'ok', near: 'near', exceeded: 'over', none: '' }[state];
+  const feedback = fieldError ? { kind: 'error', text: fieldError } : status;
 
   return (
     <section className={`card target-card ${exceeded ? 'is-over' : ''}`} aria-labelledby="target-heading">
@@ -54,9 +82,11 @@ export default function WeeklyTarget({ summary, onSaved }) {
       </h2>
 
       {!week ? (
-        <p className="muted">Loading...</p>
+        <div className="skeleton skeleton-target" aria-busy="true">
+          <span className="sr-only">Loading...</span>
+        </div>
       ) : (
-        <div data-testid="week-progress">
+        <div data-testid="week-progress" data-state={state}>
           <p className="week-meta">
             <CalendarDays size={16} aria-hidden="true" />
             <span>
@@ -69,10 +99,10 @@ export default function WeeklyTarget({ summary, onSaved }) {
             <>
               <p className="progress-text" data-testid="progress-text">
                 <strong>{week.total_kg.toFixed(2)}</strong> of <strong>{week.target_kg.toFixed(2)}</strong> kg
-                <span className={`pill ${barState}`}>{week.percent}%</span>
+                <span className={`pill ${barClass}`}>{week.percent}%</span>
               </p>
               <div
-                className={`bar ${barState}`}
+                className={`bar ${barClass}`}
                 role="progressbar"
                 aria-label="Weekly CO2 progress"
                 aria-valuemin={0}
@@ -80,10 +110,38 @@ export default function WeeklyTarget({ summary, onSaved }) {
                 aria-valuenow={Math.round(barPercent)}
                 aria-valuetext={`${week.total_kg.toFixed(2)} of ${week.target_kg.toFixed(2)} kg`}
               >
-                <div className={`bar-fill ${barState}`} style={{ width: `${barPercent}%` }} />
+                <div className={`bar-fill ${barClass}`} style={{ width: `${barShown ? barPercent : 0}%` }} />
               </div>
 
-              {exceeded ? (
+              {state === 'under' && (
+                <p className="state-msg state-under" data-testid="target-message">
+                  <CircleCheck size={18} aria-hidden="true" />
+                  <span>
+                    <strong>On track.</strong> {week.remaining_kg.toFixed(2)} kg left this week. Nice and steady.
+                  </span>
+                </p>
+              )}
+
+              {state === 'near' && (
+                <p className="state-msg state-near" data-testid="target-message">
+                  <Gauge size={18} aria-hidden="true" />
+                  <span>
+                    {week.remaining_kg === 0 ? (
+                      <>
+                        <strong>Right at your target.</strong> 0.00 kg left this week. A little care for the rest
+                        of the week keeps you here.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Getting close.</strong> {week.remaining_kg.toFixed(2)} kg left this week. A little
+                        care for the rest of the week keeps you on track.
+                      </>
+                    )}
+                  </span>
+                </p>
+              )}
+
+              {state === 'exceeded' && (
                 <div className="exceeded" role="alert" data-testid="target-exceeded">
                   <TriangleAlert size={26} className="exceeded-icon" aria-hidden="true" />
                   <div>
@@ -92,7 +150,7 @@ export default function WeeklyTarget({ summary, onSaved }) {
                     </p>
                     <p>
                       You are {week.exceeded_by_kg.toFixed(2)} kg over your weekly target of{' '}
-                      {week.target_kg.toFixed(2)} kg.
+                      {week.target_kg.toFixed(2)} kg. It happens to everyone, and small swaps add up.
                     </p>
                     {week.nudge && (
                       <p className="tip" data-testid="nudge">
@@ -104,8 +162,6 @@ export default function WeeklyTarget({ summary, onSaved }) {
                     )}
                   </div>
                 </div>
-              ) : (
-                <p className="muted">{week.remaining_kg.toFixed(2)} kg left this week.</p>
               )}
             </>
           ) : (
@@ -132,6 +188,7 @@ export default function WeeklyTarget({ summary, onSaved }) {
         <div className="field">
           <label htmlFor="weekly-target">Weekly CO2 target (kg)</label>
           <input
+            ref={inputRef}
             id="weekly-target"
             name="weekly_target_kg"
             type="number"
@@ -139,7 +196,12 @@ export default function WeeklyTarget({ summary, onSaved }) {
             inputMode="decimal"
             placeholder="e.g. 50"
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setFieldError(null);
+            }}
+            aria-invalid={fieldError ? true : undefined}
+            aria-describedby={fieldError ? 'target-feedback' : undefined}
           />
         </div>
         <button type="submit" className="btn" disabled={saving}>
@@ -147,14 +209,21 @@ export default function WeeklyTarget({ summary, onSaved }) {
         </button>
       </form>
 
-      {status && (
-        <p
-          className={`alert ${status.kind === 'success' ? 'alert-ok' : 'alert-danger'}`}
-          role={status.kind === 'success' ? 'status' : 'alert'}
-        >
-          {status.text}
-        </p>
-      )}
+      <div id="target-feedback">
+        {feedback && (
+          <p
+            className={`alert alert-icon ${feedback.kind === 'success' ? 'alert-ok' : 'alert-danger'}`}
+            role={feedback.kind === 'success' ? 'status' : 'alert'}
+          >
+            {feedback.kind === 'success' ? (
+              <CircleCheck size={18} aria-hidden="true" />
+            ) : (
+              <TriangleAlert size={18} aria-hidden="true" />
+            )}
+            <span>{feedback.text}</span>
+          </p>
+        )}
+      </div>
     </section>
   );
 }

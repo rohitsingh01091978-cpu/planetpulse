@@ -9,6 +9,10 @@ import { validateActivity, validateDate, validateQuantity } from '../lib/validat
 import { applyActivity, byNewest, matchesFilters } from '../lib/optimistic.js';
 import { summarize } from '../lib/summary.js';
 import { spawnSync } from 'node:child_process';
+import { CATEGORY_GROUPS, groupTotals } from '../lib/groups.js';
+import { targetState } from '../lib/target.js';
+import { validateTarget } from '../lib/validate.js';
+import { addToWeek, weekTotals } from '../lib/optimistic.js';
 
 let passed = 0;
 let failed = 0;
@@ -181,6 +185,92 @@ for (const [tz, out] of Object.entries(outputs)) {
 }
 check('the TZ setting really took effect (offsets differ)', new Set(Object.values(outputs).map((o) => o[5])).size >= 4, true);
 check('formatDate is stable for a leap day', formatDate('2028-02-29'), '29 Feb 2028');
+
+console.log('--- Category groups (Transport / Energy / Food)');
+check('groups are transport, energy, food', CATEGORY_GROUPS.map((g) => g.key).join(','), 'transport,energy,food');
+check('transport = car + bus + flight', CATEGORY_GROUPS[0].types.join('+'), 'car+bus+flight');
+check('energy = electricity', CATEGORY_GROUPS[1].types.join('+'), 'electricity');
+check('food = veg meal + non-veg meal', CATEGORY_GROUPS[2].types.join('+'), 'veg_meal+nonveg_meal');
+{
+  let seed = 12345;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
+  const types = Object.keys(ACTIVITY_TYPES);
+  const randomRows = (n) => Array.from({ length: n }, () => {
+    const type = types[Math.floor(rnd() * types.length)];
+    return mk(type, Math.round(rnd() * 5000) / 100 + 0.01, '2026-09-2' + Math.floor(rnd() * 8));
+  });
+  const scenarios = { 'zero activities': [], 'one activity': [mk('car', 7, '2026-09-24')], 'transport only': [mk('bus', 3, '2026-09-24'), mk('flight', 9, '2026-09-24')], 'food only': [mk('veg_meal', 1, '2026-09-24'), mk('nonveg_meal', 1, '2026-09-24')], 'many (5)': randomRows(5), 'many (60)': randomRows(60), 'many (400)': randomRows(400) };
+  for (const [name, rows] of Object.entries(scenarios)) {
+    const s = summarize(rows, 100, wk);
+    const g = groupTotals(s.categories);
+    const cents = g.groups.reduce((sum, x) => sum + Math.round(x.co2_kg * 100), 0);
+    const tenths = g.groups.reduce((sum, x) => sum + Math.round(x.share_percent * 10), 0);
+    check(name + ': groups add up EXACTLY to the total (' + s.total_kg.toFixed(2) + ' kg)', cents, Math.round(s.total_kg * 100));
+    check(name + ': group total equals summary total', g.total_kg, s.total_kg);
+    check(name + ': shares add up to 100.0% (or 0 when empty)', tenths, s.total_kg > 0 ? 1000 : 0);
+    check(name + ': entry counts add up', g.groups.reduce((sum, x) => sum + x.count, 0), s.entry_count);
+  }
+  const s3 = summarize([mk('car', 10, '2026-09-24'), mk('electricity', 10, '2026-09-24'), mk('nonveg_meal', 2, '2026-09-24')], null, wk);
+  const g3 = groupTotals(s3.categories).groups.map((x) => x.key + '=' + x.co2_kg).join(' ');
+  check('mixed example: transport 2, energy 8, food 4', g3, 'transport=2 energy=8 food=4');
+}
+
+console.log('--- Weekly target states');
+check('50% -> under', targetState(50, false), 'under');
+check('79.9% -> under', targetState(79.9, false), 'under');
+check('80% -> near', targetState(80, false), 'near');
+check('99.9% -> near', targetState(99.9, false), 'near');
+check('exactly 100% (not exceeded) -> near', targetState(100, false), 'near');
+check('above target -> exceeded', targetState(100.1, true), 'exceeded');
+check('no target -> none', targetState(null, false), 'none');
+check('state follows real numbers: 60 of 100 -> under', targetState(targetStatus(60, 100, 4).percent, targetStatus(60, 100, 4).exceeded), 'under');
+check('state follows real numbers: 85 of 100 -> near', targetState(targetStatus(85, 100, 4).percent, targetStatus(85, 100, 4).exceeded), 'near');
+check('state follows real numbers: 100 of 100 -> near', targetState(targetStatus(100, 100, 4).percent, targetStatus(100, 100, 4).exceeded), 'near');
+check('state follows real numbers: 100.01 of 100 -> exceeded', targetState(targetStatus(100.01, 100, 4).percent, targetStatus(100.01, 100, 4).exceeded), 'exceeded');
+
+console.log('--- Weekly target validation');
+check('empty target', validateTarget(''), 'Please enter a weekly target in kg.');
+check('spaces only', validateTarget('   '), 'Please enter a weekly target in kg.');
+check('zero target', validateTarget('0'), 'A weekly target must be greater than zero.');
+check('negative target', has(validateTarget('-5'), "can't be negative"), true);
+check('non-numeric target', has(validateTarget('abc'), "doesn't look like a number"), true);
+check('browser badInput target', has(validateTarget('', { badInput: true }), "doesn't look like a number"), true);
+check('0.004 -> too small', has(validateTarget('0.004'), 'too small'), true);
+check('over maximum', has(validateTarget('100001'), 'maximum'), true);
+check('50 accepted', validateTarget('50'), null);
+check('42.5 accepted', validateTarget('42.5'), null);
+check('0.01 accepted', validateTarget('0.01'), null);
+
+console.log('--- Nudge: the browser builds exactly the same tip as the server');
+{
+  const weekRows = [mk('car', 120, '2026-09-21'), mk('bus', 10, '2026-09-22'), mk('nonveg_meal', 5, '2026-09-24'), mk('flight', 40, '2026-09-27')];
+  const outside = [mk('flight', 900, '2026-09-20'), mk('electricity', 500, '2026-09-28')];
+  const server = summarize([...weekRows, ...outside], 10, wk).week.nudge;
+  const client = buildNudge(weekTotals(weekRows));
+  check('client tip == server tip', client && client.tip, server && server.tip);
+  check('tip is specific (biggest source + kg saved)', client.type + ':' + client.saved_kg, server.type + ':' + server.saved_kg);
+  check('tip names the biggest source and its saving', /biggest source/.test(client.tip) && /would have saved [\d.]+ kg/.test(client.tip), true);
+  const extra = mk('flight', 300, '2026-09-24');
+  check('addToWeek == weekTotals(rows + activity)', stable(addToWeek(weekTotals(weekRows), extra)), stable(weekTotals([...weekRows, extra])));
+  const flipped = buildNudge(addToWeek(weekTotals(weekRows), extra));
+  check('adding a big flight changes the biggest source to flight', flipped.type, 'flight');
+  check('no nudge text when the week is under target', summarize(weekRows, 1000, wk).week.nudge, null);
+}
+
+console.log('--- Week boundaries (Monday-Sunday, IST): only this week counts');
+{
+  const rows = [mk('car', 10, '2026-09-20'), mk('car', 10, '2026-09-21'), mk('car', 10, '2026-09-24'), mk('car', 10, '2026-09-27'), mk('car', 10, '2026-09-28')];
+  const thu = summarize(rows, 100, getWeekInfo(Date.parse('2026-09-24T07:00:00Z')));
+  check('Thu 24 Sep: week is Mon 21 - Sun 27', thu.week.start + '..' + thu.week.end, '2026-09-21..2026-09-27');
+  check('previous Sunday (20th) is excluded, Mon 21 + Thu 24 + Sun 27 count = 6.00 kg', thu.week.total_kg, 6);
+  check('next Monday (28th) is excluded', thu.week.total_kg < 8, true);
+  check('all-time total still counts all five rows (10.00 kg)', thu.total_kg, 10);
+  const sunLate = summarize(rows, 100, getWeekInfo(Date.parse('2026-09-27T18:29:00Z')));
+  check('Sun 23:59 IST: still the same week (Sun 27 counts)', sunLate.week.start + ' total ' + sunLate.week.total_kg, '2026-09-21 total 6');
+  const monEarly = summarize(rows, 100, getWeekInfo(Date.parse('2026-09-27T18:30:00Z')));
+  check('Mon 00:00 IST: new week starts 28 Sep', monEarly.week.start + '..' + monEarly.week.end, '2026-09-28..2026-10-04');
+  check('new week counts only Mon 28 (2.00 kg); last week drops out', monEarly.week.total_kg, 2);
+}
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

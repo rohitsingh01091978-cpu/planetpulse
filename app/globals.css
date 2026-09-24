@@ -359,6 +359,7 @@ input[type='number']::-webkit-inner-spin-button {
 .co2-hero {
   flex: 1 1 auto;
   min-height: 124px;
+  max-height: 250px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -795,14 +796,23 @@ tfoot td {
 }
 
 /* ---------- weekly target ---------- */
+/* calm colours for normal feedback; exceeded is a warm amber/orange warning, never alarm red */
+:root {
+  --orange: #c2600f;
+  --orange-soft: #fff4e6;
+  --orange-line: #f1cfa6;
+  --near: #d19a12;
+}
+
 .target-card {
   border-top: 4px solid var(--leaf);
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .target-card.is-over {
-  border-color: #eaa79d;
-  border-top-color: var(--danger);
-  box-shadow: 0 0 0 3px rgba(194, 47, 28, 0.08);
+  border-color: var(--orange-line);
+  border-top-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(194, 96, 15, 0.08);
 }
 
 .week-meta {
@@ -835,15 +845,16 @@ tfoot td {
   font-weight: 700;
   background: #e3f3e8;
   color: #14532d;
+  transition: background-color 0.3s, color 0.3s;
 }
 
-.pill.warn {
-  background: #fbebc6;
-  color: #7a4506;
+.pill.near {
+  background: #fbf0cf;
+  color: #6e5006;
 }
 
 .pill.over {
-  background: var(--danger);
+  background: var(--orange);
   color: #fff;
 }
 
@@ -859,15 +870,15 @@ tfoot td {
   height: 100%;
   border-radius: 99px;
   background: var(--leaf);
-  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.3s;
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.4s;
 }
 
-.bar-fill.warn {
-  background: #e0930f;
+.bar-fill.near {
+  background: var(--near);
 }
 
 .bar-fill.over {
-  background-color: var(--danger);
+  background-color: var(--orange);
   background-image: repeating-linear-gradient(
     45deg,
     rgba(255, 255, 255, 0.2) 0 8px,
@@ -875,16 +886,43 @@ tfoot td {
   );
 }
 
+.state-msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  animation: rise 0.25s ease both;
+}
+
+.state-msg svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.state-under {
+  background: #eaf5ec;
+  border: 1px solid #c5e0cb;
+  color: #14532d;
+}
+
+.state-near {
+  background: #fdf5da;
+  border: 1px solid #ecd58a;
+  color: #5c4305;
+}
+
 .exceeded {
   display: flex;
   gap: 14px;
-  margin-top: 18px;
+  margin-top: 16px;
   padding: 18px 20px;
   border-radius: 14px;
-  background: #fdecea;
-  border: 1px solid #efa99f;
-  border-left: 6px solid var(--danger);
-  color: #6f1a0e;
+  background: var(--orange-soft);
+  border: 1px solid var(--orange-line);
+  border-left: 6px solid var(--orange);
+  color: #6b3608;
   animation: rise 0.35s ease both;
 }
 
@@ -894,13 +932,13 @@ tfoot td {
 
 .exceeded-title {
   font-size: 1.2rem;
-  color: var(--danger);
+  color: #a34e0b;
 }
 
 .exceeded-icon {
   flex: none;
   margin-top: 2px;
-  color: var(--danger);
+  color: var(--orange);
 }
 
 .tip {
@@ -910,10 +948,11 @@ tfoot td {
   margin: 12px 0 0 !important;
   padding: 12px 14px;
   border-radius: 10px;
-  background: #fffbea;
-  border: 1px solid #efd894;
-  border-left: 4px solid #e0930f;
+  background: #fffdf7;
+  border: 1px solid #ecd9b0;
+  border-left: 4px solid var(--near);
   color: #4d3506;
+  animation: rise 0.25s ease both;
 }
 
 .tip svg {
@@ -1090,4 +1129,174 @@ tfoot td {
   .row .btn {
     flex: 1 1 100%;
   }
+}
+
+/* ---------- right column stack (hero + weekly target) ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.stack .target-card {
+  flex: 1 1 auto;
+}
+
+/* ---------- category groups ---------- */
+[data-group='transport'] {
+  --gc: #0f766e;
+  --gb: #d9f0ec;
+}
+
+[data-group='energy'] {
+  --gc: #a16207;
+  --gb: #faefc4;
+}
+
+[data-group='food'] {
+  --gc: #2f7d3a;
+  --gb: #dff1e1;
+}
+
+.groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.group-tile {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfaf4;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.group-tile:hover {
+  border-color: #cfc9b8;
+  box-shadow: 0 2px 8px rgba(29, 43, 35, 0.06);
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-chip {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--gb);
+  color: var(--gc);
+}
+
+.group-name {
+  font-weight: 650;
+}
+
+.group-kg {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.group-kg strong {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.group-share {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.group-bar {
+  display: block;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 99px;
+  background: #ece7d8;
+  overflow: hidden;
+}
+
+.group-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--gc);
+  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.group-sum {
+  margin: 0 0 22px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.group-sum strong {
+  color: var(--ink);
+}
+
+/* ---------- loading skeletons and small helpers ---------- */
+.skeleton {
+  border-radius: 14px;
+  background: #efeadb;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-hero {
+  height: 150px;
+}
+
+.skeleton-target {
+  height: 210px;
+}
+
+.skeleton-table {
+  height: 300px;
+}
+
+.alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-small {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 640px) {
+  .groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* the hero is the only thing in its card now, so it needs no bottom gap */
+.card .hero:last-child {
+  margin-bottom: 0;
 }
