@@ -26,11 +26,15 @@ export default function WeeklyTarget({ summary, onSaved }) {
     if (savedTarget != null) setValue(String(savedTarget));
   }, [savedTarget]);
 
-  // Each API route is its own serverless function on Vercel. Touch this one on page load so
-  // the first "Save target" does not pay for a cold start.
-  useEffect(() => {
+  // Each API route is its own serverless function on Vercel. Touch this one (once) when the
+  // user starts editing the target, so "Save target" does not pay for a cold start. Nothing is
+  // requested on page load.
+  const warmed = useRef(false);
+  function warmTargetRoute() {
+    if (warmed.current) return;
+    warmed.current = true;
     apiFetch('/api/target');
-  }, []);
+  }
 
   useEffect(() => {
     if (!hasTarget) {
@@ -196,6 +200,7 @@ export default function WeeklyTarget({ summary, onSaved }) {
             inputMode="decimal"
             placeholder="e.g. 50"
             value={value}
+            onFocus={warmTargetRoute}
             onChange={(e) => {
               setValue(e.target.value);
               setFieldError(null);

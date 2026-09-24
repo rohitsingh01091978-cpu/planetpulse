@@ -37,7 +37,8 @@ export default function Home() {
     });
   }, []);
 
-  const loadSummary = useCallback(async () => {
+  // refreshWeek: false skips reloading this week's activities (a target change cannot alter them).
+  const loadSummary = useCallback(async ({ refreshWeek = true } = {}) => {
     const id = ++latestRequest.current;
     const res = await apiFetch('/api/summary');
     if (id !== latestRequest.current) return; // a newer request superseded this one
@@ -47,7 +48,7 @@ export default function Home() {
     }
     setError(null);
     setSummary(res.data);
-    loadWeek(res.data.week);
+    if (refreshWeek) loadWeek(res.data.week);
   }, [loadWeek]);
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function Home() {
         const w = prev.week;
         return { ...prev, week: { ...w, ...targetStatus(w.total_kg, target, w.day_number) } };
       });
-      loadSummary();
+      loadSummary({ refreshWeek: false });
     },
     [loadSummary]
   );
@@ -108,7 +109,7 @@ export default function Home() {
       {error && (
         <div className="alert alert-danger alert-row" role="alert">
           <span>{error}</span>
-          <button type="button" className="btn btn-secondary btn-small" onClick={loadSummary}>
+          <button type="button" className="btn btn-secondary btn-small" onClick={() => loadSummary()}>
             Try again
           </button>
         </div>
