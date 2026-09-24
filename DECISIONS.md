@@ -18,6 +18,13 @@ The week runs Monday to Sunday in IST (UTC+05:30), calculated explicitly rather 
 - **Backend calculation:** the CO2 value is computed in the API route and stored with each activity, so history stays correct even if factors change later.
 - **Quantities are rounded to 2 decimals** before calculating, so the stored quantity and the stored CO2 always agree.
 
+## History and filters
+
+- **Filters apply as you change them, and can be removed one by one.** Each active filter shows as a chip ("Type: Flight", "From: 24 Sept 2026") with its own remove button, next to the existing "Apply filters" and "Clear filters" buttons. Filtering only ever reads data; it never changes what is stored.
+- **A backwards date range shows a message, not results.** If "From" is after "To", nothing can match, so the page explains that and does not ask the server at all. Same-day ranges and both boundaries are inclusive.
+- **The summary line always matches the rows on screen.** It shows how many activities are listed and their total CO2, summed in whole cents so it is exact. Empty states are different for "nothing logged yet" and "nothing matches these filters" (which offers a Clear filters action).
+- **One week function.** The week is computed only by `getWeekInfo` on the server. The dashboard, the weekly target and the nudge all use the week the server returns, so last week's and future-dated activities can never leak into this week's progress.
+
 ## Dashboard groups and weekly target states
 
 - **Three groups on top of the table.** Transport (car, bus, flight), Energy (electricity) and Food (veg, non-veg) are rolled up from the same per-type data. The sums are done in whole cents and the shares with the largest-remainder method, so the groups add up exactly to the total kg and to exactly 100.0%.

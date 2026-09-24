@@ -13,6 +13,7 @@ import { CATEGORY_GROUPS, groupTotals } from '../lib/groups.js';
 import { targetState } from '../lib/target.js';
 import { validateTarget } from '../lib/validate.js';
 import { addToWeek, weekTotals } from '../lib/optimistic.js';
+import { activeFilters, isRangeInvalid, summarizeRows } from '../lib/history.js';
 
 let passed = 0;
 let failed = 0;
@@ -271,6 +272,21 @@ console.log('--- Week boundaries (Monday-Sunday, IST): only this week counts');
   check('Mon 00:00 IST: new week starts 28 Sep', monEarly.week.start + '..' + monEarly.week.end, '2026-09-28..2026-10-04');
   check('new week counts only Mon 28 (2.00 kg); last week drops out', monEarly.week.total_kg, 2);
 }
+
+console.log('--- History: filter chips, invalid range, count and total');
+check('no filters -> no chips', activeFilters({ type: 'all', from: '', to: '' }).length, 0);
+check('type chip label', activeFilters({ type: 'flight', from: '', to: '' })[0].label, 'Type: Flight');
+check('non-veg chip label', activeFilters({ type: 'nonveg_meal', from: '', to: '' })[0].label, 'Type: Non-veg meal');
+check('from chip label', activeFilters({ type: 'all', from: '2026-09-24', to: '' })[0].label, 'From: 24 Sept 2026');
+check('to chip label', activeFilters({ type: 'all', from: '', to: '2026-01-05' })[0].label, 'To: 5 Jan 2026');
+check('all three chips in order', activeFilters({ type: 'bus', from: '2026-09-01', to: '2026-09-30' }).map((c) => c.key).join(','), 'type,from,to');
+check('From after To -> invalid', isRangeInvalid({ type: 'all', from: '2026-09-25', to: '2026-09-24' }), true);
+check('same day is valid (inclusive)', isRangeInvalid({ type: 'all', from: '2026-09-24', to: '2026-09-24' }), false);
+check('From-only is valid', isRangeInvalid({ type: 'all', from: '2026-09-24', to: '' }), false);
+check('To-only is valid', isRangeInvalid({ type: 'all', from: '', to: '2026-09-24' }), false);
+check('empty list -> 0 rows, 0.00 kg', JSON.stringify(summarizeRows([])), JSON.stringify({ count: 0, total_kg: 0 }));
+check('row total is exact in cents (0.1 + 0.2 = 0.3)', summarizeRows([{ co2_kg: 0.1 }, { co2_kg: 0.2 }]).total_kg, 0.3);
+check('row total of many rows', summarizeRows([{ co2_kg: 26.25 }, { co2_kg: 0.64 }, { co2_kg: 2.5 }, { co2_kg: 0.16 }]).total_kg, 29.55);
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

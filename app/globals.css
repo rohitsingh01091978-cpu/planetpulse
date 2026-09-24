@@ -1300,3 +1300,117 @@ tfoot td {
 .card .hero:last-child {
   margin-bottom: 0;
 }
+
+/* ---------- history: toolbar, chips, summary ---------- */
+.toolbar {
+  margin-bottom: 14px;
+  padding: 14px 16px 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfaf4;
+}
+
+.toolbar-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.toolbar-head svg {
+  color: var(--leaf);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 99px;
+  background: #e3f3e8;
+  color: #14532d;
+  font-size: 0.85rem;
+  font-weight: 650;
+  animation: rise 0.2s ease both;
+}
+
+.chip-x {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.chip-x:hover {
+  background: rgba(20, 83, 45, 0.16);
+}
+
+.chip-x:focus-visible {
+  outline: 3px solid rgba(46, 155, 87, 0.5);
+  outline-offset: 1px;
+}
+
+.history-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 10px;
+}
+
+.history-total {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--forest);
+  font-variant-numeric: tabular-nums;
+}
+
+.co2-cell {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--forest);
+}
+
+.table-wrap:focus-visible {
+  outline: 3px solid rgba(46, 155, 87, 0.45);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.row-new {
+  animation: flash 1.8s ease-out 1;
+}
+
+.empty-action {
+  margin-top: 12px;
+}
+
+@keyframes flash {
+  from {
+    background-color: #d7efdd;
+  }
+  to {
+    background-color: transparent;
+  }
+}

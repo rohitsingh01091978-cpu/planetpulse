@@ -30,12 +30,14 @@ function Illustration({ variant, size }) {
   );
 }
 
-export default function EmptyState({ variant = 'leaf', title, children, size = 88 }) {
+// `action` is an optional element (for example a button) shown under the hint.
+export default function EmptyState({ variant = 'leaf', title, children, action, size = 88 }) {
   return (
     <div className="empty-state" data-testid="empty-state">
       <Illustration variant={variant} size={size} />
       <p className="empty-title">{title}</p>
       {children && <p className="empty-text">{children}</p>}
+      {action && <div className="empty-action">{action}</div>}
     </div>
   );
 }
